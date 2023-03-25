@@ -14,6 +14,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "chalk": "^4.1.2",
+    "cheerio": "^1.0.0-rc.12",
+    "moment": "^2.29.4",
     "playwright": "^1.31.2",
     "request-promise-native": "^1.0.9"
   },

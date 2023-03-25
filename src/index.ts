@@ -1,10 +1,31 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+import { getDespesasExtras } from "./Fiorilli/despesasExtras";
 import { getDespesasGerais } from "./Fiorilli/despesasGerais";
+import { getReceitas } from "./Fiorilli/receitas";
+import { getTransferencias } from "./Fiorilli/transferencias";
+
+const pageUrl = "http://170.78.48.18:8079/transparencia";
+const exercicio = "2021";
+const entidade = "CAMARA MUNICIPAL DE DORMENTES";
 
 (async () => {
-  console.log("\x1b[33m Welcome to the app! \x1b[0m");
   await getDespesasGerais({
-    initialDate: "01/03/2021",
-    finalDate: "30/03/2021",
+    pageUrl,
+    exercicio,
+    entidade,
+  });
+  await getDespesasExtras({
+    pageUrl,
+    exercicio,
+    entidade,
+  });
+  await getReceitas({
+    pageUrl,
+    exercicio,
+    entidade,
+  });
+  await getTransferencias({
+    pageUrl,
+    exercicio,
+    entidade,
   });
 })();

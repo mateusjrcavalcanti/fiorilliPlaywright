@@ -1,3 +1,4 @@
+import { error, info, ok, sleep } from "../utils";
 import { Frame, Page } from "playwright-core";
 
 interface changeExercicioProps {
@@ -11,11 +12,10 @@ interface changeEntidadeProps {
 }
 
 interface changeDateIntervalProps {
+  frameUrl: string;
   page: Page;
-  frame: Frame;
-  url: string;
-  initialDate: string;
-  finalDate: string;
+  initialDate?: string;
+  finalDate?: string;
 }
 
 export async function changeExercicio({
@@ -41,7 +41,7 @@ export async function changeExercicio({
     (response) =>
       response.url().includes("Home.aspx") && response.status() == 200
   );
-  console.log("Exercicio preenchido");
+  ok("Exercicio preenchido");
 }
 
 export async function changeEntidade({ page, entidade }: changeEntidadeProps) {
@@ -62,48 +62,140 @@ export async function changeEntidade({ page, entidade }: changeEntidadeProps) {
     (response) =>
       response.url().includes("Home.aspx") && response.status() == 200
   );
-  console.log("Entidade preenchida");
+
+  ok("Entidade preenchida");
 }
 
-export async function disableDadosConsolidados({ frame }: { frame: Frame }) {
-  const dadosConsolidadosInput = await frame.waitForSelector(
+export async function disableDadosConsolidados({
+  frameUrl,
+  page,
+}: {
+  frameUrl: string;
+  page: Page;
+}) {
+  const frameHome = page.frame({ url: new RegExp(frameUrl, "i") });
+  if (!frameHome) {
+    error(
+      `Frame ${frameUrl} não encontrado em "disableDadosConsolidados" function`
+    );
+    return;
+  }
+  const dadosConsolidadosInput = await frameHome.waitForSelector(
     "input[id=chkMostrarDadosConsolidados]",
     { state: "attached" }
   );
   dadosConsolidadosInput?.uncheck();
-  console.log("Dados consolidados desabilitados");
+  ok("Dados consolidados desabilitados");
 }
 
 export async function changeDateInterval({
+  frameUrl,
   page,
-  frame,
-  url,
   initialDate,
   finalDate,
 }: changeDateIntervalProps) {
-  const dataInitialSelector = "input[name=datDataInicial]";
-  const datafinalSelector = "input[name=datDataFinal]";
-  const elementClickSelector = "div[id=divPesqHistEmpenho]";
-
-  // Data inicial
-  const dataInitialInput = await frame.waitForSelector(dataInitialSelector, {
-    state: "attached",
+  const frameDespesasPorEntidade = page.frame({
+    url: new RegExp(frameUrl, "i"),
   });
-  await dataInitialInput?.fill(initialDate);
-  console.log(`Data inicial preenchida: ${initialDate}`);
 
-  await page.waitForTimeout(2000);
+  if (frameDespesasPorEntidade && (initialDate || finalDate)) {
+    initialDate = !initialDate
+      ? `01/01/${finalDate?.split("/")[2]}`
+      : initialDate;
+    finalDate = !finalDate ? `31/12/${initialDate?.split("/")[2]}` : finalDate;
+    const dataInitialSelector = "input[name=datDataInicial]";
+    const datafinalSelector = "input[name=datDataFinal]";
+    const elementClickSelector = "div[id=divPesqHistEmpenho]";
 
-  // Data final
-  const dataFinalInput = await frame.waitForSelector(datafinalSelector, {
+    info(`📅 ${initialDate} - data inicial`);
+    info(`📅 ${finalDate} - data final`);
+
+    // Data inicial
+    const dataInitialInput = await frameDespesasPorEntidade.waitForSelector(
+      dataInitialSelector,
+      {
+        state: "attached",
+      }
+    );
+    await dataInitialInput?.fill(initialDate);
+    ok(`Data inicial preenchida: ${initialDate}`);
+
+    // Data final
+    const dataFinalInput = await frameDespesasPorEntidade.waitForSelector(
+      datafinalSelector,
+      {
+        state: "visible",
+      }
+    );
+    await dataFinalInput?.fill(finalDate);
+
+    ok(`Data final preenchida: ${finalDate}`);
+
+    await (
+      await frameDespesasPorEntidade.waitForSelector(elementClickSelector, {
+        state: "attached",
+      })
+    ).click();
+  }
+
+  await sleep({ time: 2000, page });
+
+  return frameDespesasPorEntidade;
+}
+
+export async function getTotal({
+  page,
+  frameUrl,
+  log,
+}: {
+  page: Page;
+  frameUrl?: string;
+  log?: boolean;
+}) {
+  const frameDespesasPorEntidade = page.frame({
+    url: new RegExp(`${frameUrl}`, "i"),
+  });
+
+  const selector =
+    (await frameDespesasPorEntidade?.$("td.dxpSummary")) ||
+    (await page?.$("td.dxpSummary"));
+
+  if (!selector) {
+    error("Não foi possível encontrar o total de linhas");
+    return;
+  }
+
+  const RegExpMatch = (await selector.textContent())?.match(
+    // eslint-disable-next-line no-useless-escape
+    /(Total de linhas - )([\d\w\.]+)/
+  ) as RegExpMatchArray;
+
+  const sumario = Number(RegExpMatch[2]);
+
+  if (log == undefined || log == true) info(`📊 Total de linhas: ${sumario}`);
+
+  return sumario;
+}
+
+export async function getColuns(page: Page, idGrid: string) {
+  await page.waitForSelector(`#${idGrid}_DXHeadersRow`, {
     state: "visible",
   });
-  await dataFinalInput?.fill(finalDate);
-  console.log(`Data final preenchida: ${finalDate}`);
+  const colunas = await page.evaluate((idGrid: string) => {
+    const childrens: any = document.querySelectorAll(
+      `#${idGrid}_DXHeadersRow > td > table > tbody > tr > td`
+    );
+    const itens = [];
+    for (let i = 0; i < childrens.length; i++) {
+      itens.push(
+        childrens[i].innerText
+          .normalize("NFD")
+          .replace(/[^a-zA-Zs]/g, "")
+          .toLowerCase()
+      );
+    }
+    return itens;
+  }, idGrid);
 
-  await (
-    await frame.waitForSelector(elementClickSelector, {
-      state: "attached",
-    })
-  ).click();
+  return colunas;
 }
