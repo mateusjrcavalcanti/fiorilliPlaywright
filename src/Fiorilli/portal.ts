@@ -35,6 +35,11 @@ export async function changeExercicio({
     selector?.removeAttribute("readonly");
   });
 
+  if ((await exercicioInput.getAttribute("value")) == exercicio) {
+    info("Exercicio já preenchido");
+    return;
+  }
+
   await exercicioInput?.fill(exercicio);
   await page.evaluate(() => {
     eval(`aspxETextChanged('cmbExercicio')`);
@@ -56,6 +61,12 @@ export async function changeEntidade({ page, entidade }: changeEntidadeProps) {
     selector?.removeAttribute("disabled");
     selector?.removeAttribute("readonly");
   });
+
+  if ((await entidadeInput.getAttribute("value")) == entidade) {
+    info("Entidade já preenchido");
+    return;
+  }
+
   await entidadeInput?.fill(entidade);
   await page.evaluate(() => {
     eval(`aspxETextChanged('cmbEntidadeContabil')`);
@@ -190,10 +201,8 @@ export async function getColuns(page: Page, idGrid: string) {
     const itens = [];
     for (let i = 0; i < childrens.length; i++) {
       itens.push(
-        childrens[i].innerText
-          .normalize("NFD")
-          .replace(/[^a-zA-Zs]/g, "")
-          .toLowerCase()
+        childrens[i].innerText.normalize("NFD").replace(/[^a-zA-Zs]/g, "")
+        //.toLowerCase()
       );
     }
     return itens;
@@ -209,17 +218,17 @@ export function tratamento(dados: any) {
     if (k == "pagamentos")
       dados[k] = dados[k].map((data: any) => tratamento(data));
 
-    if (k == "data" || k == "vencimento")
+    if (k == "Data" || k == "data" || k == "Vencimento")
       dados[k] = new Date(moment(dados[k], "DD/MM/YYYY").format("YYYY-MM-DD"));
-    if (k == "exercicio" || k == "Extra") dados[k] = Number(dados[k]);
+    if (k == "Exercicio" || k == "Extra") dados[k] = Number(dados[k]);
     if (
-      k == "valorempenhado" ||
+      k == "ValorEmpenhado" ||
       k == "valor" ||
-      k == "recebida" ||
-      k == "concedida" ||
+      k == "Recebida" ||
+      k == "Concedida" ||
       k == "retencao" ||
       k == "pago" ||
-      k == "arrectotal"
+      k == "ArrecTotal"
     )
       dados[k] = Number(dados[k].replace(".", "").replace(",", "."));
   });

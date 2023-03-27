@@ -1,6 +1,20 @@
 import moment from "moment";
 import { Page, chromium, BrowserContext } from "playwright-core";
 import { blockRequests, infoTitle, ok, sleep, title } from "../utils";
+import { PrismaClient, Prisma } from "@prisma/client";
+const prisma = new PrismaClient();
+
+type AnoWithEntidadeName = Prisma.AnoGetPayload<{
+  include: {
+    entidadeName: {
+      include: {
+        entidade: {
+          include: { portal: true };
+        };
+      };
+    };
+  };
+}>;
 
 import {
   changeExercicio,
@@ -11,13 +25,12 @@ import {
   getColuns,
   tratamento,
 } from "./portal";
+import { info } from "console";
 
 interface getReceitasProps {
   initialDate?: string;
   finalDate?: string;
-  entidade: string;
-  exercicio: string;
-  pageUrl: string;
+  ano: AnoWithEntidadeName;
 }
 
 interface acessdespesasGeraisProps {
@@ -27,13 +40,14 @@ interface acessdespesasGeraisProps {
 export async function getReceitas({
   initialDate,
   finalDate,
-  pageUrl,
-  entidade,
-  exercicio,
+  ano: anoprop,
 }: getReceitasProps) {
+  const exercicio = `${anoprop.ano}`;
+  const entidade = `${anoprop.entidadeName.name}`;
+  const pageUrl = anoprop.entidadeName.entidade.portal.url;
   const inicio = moment.now();
-  title(`Despesas Extras`);
-  const browser = await chromium.launch({ headless: false, devtools: true });
+  title(`Receitas`);
+  const browser = await chromium.launch({ headless: true, devtools: true });
   const context = await browser.newContext();
   const page = await context.newPage();
   await blockRequests({ page });
@@ -65,7 +79,7 @@ export async function getReceitas({
 
   if (!total) return;
 
-  await getAllReceitas({ context, page, total });
+  await getAllReceitas({ context, page, total, ano: anoprop });
 
   await browser.close();
   infoTitle(
@@ -90,10 +104,12 @@ async function getAllReceitas({
   context,
   page,
   total,
+  ano,
 }: {
   context: BrowserContext;
   page: Page;
   total: number;
+  ano: AnoWithEntidadeName;
 }) {
   const url = page.url();
   await page.goto(
@@ -104,15 +120,17 @@ async function getAllReceitas({
   );
   const colunas = await getColuns(page, "gridReceitas");
 
-  await getReceita({ page, colunas });
+  await getReceita({ page, colunas, ano });
 }
 
 async function getReceita({
   page,
   colunas,
+  ano,
 }: {
   page: Page;
   colunas: string[];
+  ano: AnoWithEntidadeName;
 }) {
   await page.waitForLoadState("networkidle");
   const linhas = await page.$$eval(
@@ -127,7 +145,7 @@ async function getReceita({
       return linhas;
     }
   );
-  save({ receitas: linhas, colunas });
+  save({ receitas: linhas, colunas, ano });
   if (
     await page.evaluate(
       () => document.querySelectorAll("img.dxWeb_pNext").length
@@ -145,6 +163,7 @@ async function getReceita({
     await getReceita({
       page,
       colunas,
+      ano,
     });
   }
 }
@@ -152,9 +171,11 @@ async function getReceita({
 export async function save({
   receitas,
   colunas,
+  ano,
 }: {
   receitas: any[];
   colunas: string[];
+  ano: AnoWithEntidadeName;
 }) {
   const inserts = receitas.map(async (receita) => {
     const obj = {} as any;
@@ -163,5 +184,24 @@ export async function save({
     );
     return tratamento(obj);
   });
-  console.log(inserts);
+
+  for await (const receita of inserts) {
+    info(`${receita.Extra} - ${receita.Data} - ${receita.ArrecTotal}`);
+    await prisma.receita.upsert({
+      where: {
+        Extra_Data: {
+          Extra: receita.Extra,
+          Data: receita.Data,
+        },
+      },
+      update: {
+        ...receita,
+      },
+      create: {
+        anoId: ano.id,
+        Exercicio: ano.ano,
+        ...receita,
+      },
+    });
+  }
 }

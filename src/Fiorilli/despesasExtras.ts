@@ -1,3 +1,5 @@
+import { Prisma } from "@prisma/client";
+
 import moment from "moment";
 import {
   Page,
@@ -24,12 +26,22 @@ import {
   getTotal,
 } from "./portal";
 
+type AnoWithEntidadeName = Prisma.AnoGetPayload<{
+  include: {
+    entidadeName: {
+      include: {
+        entidade: {
+          include: { portal: true };
+        };
+      };
+    };
+  };
+}>;
+
 interface getDespesasExtrasProps {
   initialDate?: string;
   finalDate?: string;
-  entidade: string;
-  exercicio: string;
-  pageUrl: string;
+  ano: AnoWithEntidadeName;
 }
 
 interface acessdespesasGeraisProps {
@@ -37,15 +49,17 @@ interface acessdespesasGeraisProps {
 }
 
 export async function getDespesasExtras({
+  ano: anoprop,
   initialDate,
   finalDate,
-  pageUrl,
-  entidade,
-  exercicio,
 }: getDespesasExtrasProps) {
+  const exercicio = `${anoprop.ano}`;
+  const entidade = `${anoprop.entidadeName.name}`;
+  const pageUrl = anoprop.entidadeName.entidade.portal.url;
+
   const inicio = moment.now();
   title(`Despesas Extras`);
-  const browser = await chromium.launch({ headless: false, devtools: true });
+  const browser = await chromium.launch({ headless: true, devtools: true });
   const context = await browser.newContext();
   const page = await context.newPage();
   await blockRequests({ page });
@@ -77,7 +91,7 @@ export async function getDespesasExtras({
 
   if (!total) return;
 
-  await getAllDespesasExtras({ context, page, total });
+  await getAllDespesasExtras({ context, page, total, ano: anoprop });
 
   await browser.close();
   infoTitle(
@@ -102,10 +116,12 @@ async function getAllDespesasExtras({
   context,
   page,
   total,
+  ano,
 }: {
   context: BrowserContext;
   page: Page;
   total: number;
+  ano: AnoWithEntidadeName;
 }) {
   const pageDadosEmpenho = await context.newPage();
   const url = page.url();
@@ -148,7 +164,7 @@ async function getAllDespesasExtras({
 
   const linhas = filterDespesasExtra({ onCellClick: empenhosExtra });
   for await (const link of linhas) {
-    console.log(link);
+    //console.log(link);
     await page.bringToFront();
     await page.evaluate((link: string) => eval(link), link);
     await page.waitForResponse(
@@ -163,6 +179,7 @@ async function getAllDespesasExtras({
     });
     // call the function
     await getDadosEmpenhoFromList({
+      ano,
       page,
       pageDadosEmpenho,
       func: save,

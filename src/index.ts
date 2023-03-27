@@ -3,29 +3,47 @@ import { getDespesasGerais } from "./Fiorilli/despesasGerais";
 import { getReceitas } from "./Fiorilli/receitas";
 import { getTransferencias } from "./Fiorilli/transferencias";
 
-const pageUrl = "http://170.78.48.18:8079/transparencia";
-const exercicio = "2021";
-const entidade = "CAMARA MUNICIPAL DE DORMENTES";
+import { PrismaClient } from "@prisma/client";
+import { title } from "./utils";
+const prisma = new PrismaClient();
 
 (async () => {
-  await getDespesasGerais({
-    pageUrl,
-    exercicio,
-    entidade,
+  const anos = await prisma.ano.findMany({
+    include: {
+      entidadeName: {
+        include: {
+          entidade: {
+            include: { portal: true },
+          },
+        },
+      },
+    },
+    orderBy: { ano: "desc" },
   });
-  await getDespesasExtras({
-    pageUrl,
-    exercicio,
-    entidade,
-  });
-  await getReceitas({
-    pageUrl,
-    exercicio,
-    entidade,
-  });
-  await getTransferencias({
-    pageUrl,
-    exercicio,
-    entidade,
-  });
+
+  const anoAtual = new Date().getFullYear();
+  const mesAtual = new Date().getMonth() + 1;
+
+  for await (const ano of anos) {
+    if (
+      Number(ano.ano) == anoAtual ||
+      (Number(ano.ano) == anoAtual - 1 && mesAtual == 1)
+      // || ano.ano == 2022
+    ) {
+      title(`Ano: ${ano.ano} - Entidade: ${ano.entidadeName.name}`);
+      await getDespesasGerais({
+        ano,
+        //initialDate: `01/07/${ano.ano}`,
+      });
+      await getDespesasExtras({
+        ano,
+      });
+      await getReceitas({
+        ano,
+      });
+      await getTransferencias({
+        ano,
+      });
+    }
+  }
 })();

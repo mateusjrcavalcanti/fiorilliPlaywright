@@ -1,0 +1,151 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Portal {
+  id           Int        @id @default(autoincrement())
+  url          String     @unique
+  lastUpdated  DateTime?
+  lastScrapper DateTime?
+  acessos      Int?
+  entidades    Entidade[]
+}
+
+model Entidade {
+  id            Int            @id @default(autoincrement())
+  portal        Portal         @relation(fields: [portalId], references: [id], onDelete: Cascade)
+  portalId      Int
+  EntidadeNames EntidadeName[]
+}
+
+model EntidadeName {
+  name       String   @id
+  entidade   Entidade @relation(fields: [entidadeId], references: [id], onDelete: Cascade)
+  entidadeId Int
+  anos       Ano[]
+}
+
+model Ano {
+  id             Int             @id @default(autoincrement())
+  ano            Int
+  lastScrapper   DateTime?
+  entidadeName   EntidadeName    @relation(fields: [nameId], references: [name], onDelete: Cascade)
+  nameId         String
+  empenhos       Empenho[]
+  receitas       Receita[]
+  transferencias Transferencia[]
+
+  @@unique([ano, nameId])
+}
+
+model Receita {
+  id            Int       @id @default(autoincrement())
+  Extra         Int
+  Data          DateTime?
+  ArrecTotal    Float
+  Especificacao String
+  Exercicio     Int
+
+  Ano   Ano @relation(fields: [anoId], references: [id], onDelete: Cascade)
+  anoId Int
+
+  @@unique([Extra, Data])
+}
+
+model Transferencia {
+  id                 Int       @id @default(autoincrement())
+  Data               DateTime?
+  Recebida           Float
+  Concedida          Float
+  Historico          String
+  Exercicio          Int
+  EntidadePagadora   String
+  CNPJEntPagadora    String
+  EntidadeRecebedora String
+  CNPJEntRecebedora  String
+
+  Ano   Ano @relation(fields: [anoId], references: [id], onDelete: Cascade)
+  anoId Int
+
+  @@unique([CNPJEntPagadora, CNPJEntRecebedora, Data])
+}
+
+model Empenho {
+  id                  Int       @id @default(autoincrement())
+  Exercicio           Int
+  Numero              String?
+  Tipo                String?
+  CPFCNPJ             String?
+  Favorecido          String?
+  Historico           String?
+  Data                DateTime?
+  ValorEmpenhado      Float
+  Processo            String?
+  NumLicitacao        String?
+  Inciso              String?
+  TipoLicitacao       String?
+  Poder               String?
+  Orgao               String?
+  Termo               String?
+  Contrato            String?
+  Unidade             String?
+  IniContrato         String?
+  FimContrato         String?
+  NumConvenio         String?
+  ContratoDetalhado   String?
+  AnoConvenio         String?
+  Funcao              String?
+  SubFuncao           String?
+  Programa            String?
+  ProjetoAtividade    String?
+  FonGrupo            String?
+  FonCodigo           String?
+  FonteSTN            String?
+  Vinculo             String?
+  CategoriaEconomica  String?
+  GrupoNatureza       String?
+  ModalidadeAplicacao String?
+  Elemento            String?
+  Desdobro            String?
+  Natureza            String?
+
+  Ano         Ano          @relation(fields: [anoId], references: [id], onDelete: Cascade)
+  anoId       Int
+  liquidacoes Liquidacao[]
+  pagamentos  Pagamento[]
+
+  @@unique([anoId, Numero])
+}
+
+model Liquidacao {
+  numero     String
+  data       DateTime?
+  Vencimento DateTime?
+  valor      Float
+
+  epenho   Empenho @relation(fields: [epenhoId], references: [id], onDelete: Cascade)
+  epenhoId Int
+
+  @@unique([numero, epenhoId])
+}
+
+model Pagamento {
+  numero   String
+  parcela  String
+  data     DateTime?
+  valor    Float
+  retencao Float
+  pago     Float
+  epenho   Empenho   @relation(fields: [epenhoId], references: [id], onDelete: Cascade)
+  epenhoId Int
+
+  @@unique([numero, epenhoId])
+}

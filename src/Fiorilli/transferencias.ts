@@ -1,6 +1,20 @@
 import moment from "moment";
 import { Page, chromium, BrowserContext } from "playwright-core";
 import { blockRequests, infoTitle, ok, sleep, title } from "../utils";
+import { PrismaClient, Prisma } from "@prisma/client";
+const prisma = new PrismaClient();
+
+type AnoWithEntidadeName = Prisma.AnoGetPayload<{
+  include: {
+    entidadeName: {
+      include: {
+        entidade: {
+          include: { portal: true };
+        };
+      };
+    };
+  };
+}>;
 
 import {
   changeExercicio,
@@ -11,13 +25,12 @@ import {
   getColuns,
   tratamento,
 } from "./portal";
+import { info } from "console";
 
 interface getTransferenciasProps {
   initialDate?: string;
   finalDate?: string;
-  entidade: string;
-  exercicio: string;
-  pageUrl: string;
+  ano: AnoWithEntidadeName;
 }
 
 interface acessTransferenciasProps {
@@ -25,14 +38,16 @@ interface acessTransferenciasProps {
 }
 
 export async function getTransferencias({
+  initialDate,
   finalDate,
-  pageUrl,
-  entidade,
-  exercicio,
+  ano: anoprop,
 }: getTransferenciasProps) {
+  const exercicio = `${anoprop.ano}`;
+  const entidade = `${anoprop.entidadeName.name}`;
+  const pageUrl = anoprop.entidadeName.entidade.portal.url;
   const inicio = moment.now();
-  title(`Despesas Extras`);
-  const browser = await chromium.launch({ headless: false, devtools: true });
+  title(`Transferências`);
+  const browser = await chromium.launch({ headless: true, devtools: true });
   const context = await browser.newContext();
   const page = await context.newPage();
   await blockRequests({ page });
@@ -67,7 +82,7 @@ export async function getTransferencias({
 
   if (!total) return;
 
-  await getAllTransferencias({ context, page, total });
+  await getAllTransferencias({ context, page, total, ano: anoprop });
 
   await browser.close();
   infoTitle(
@@ -92,10 +107,12 @@ async function getAllTransferencias({
   context,
   page,
   total,
+  ano,
 }: {
   context: BrowserContext;
   page: Page;
   total: number;
+  ano: AnoWithEntidadeName;
 }) {
   const url = page.url();
   await page.goto(
@@ -106,15 +123,17 @@ async function getAllTransferencias({
   );
   const colunas = await getColuns(page, "gridTransferencias");
 
-  await getTransferencia({ page, colunas });
+  await getTransferencia({ page, colunas, ano });
 }
 
 async function getTransferencia({
   page,
   colunas,
+  ano,
 }: {
   page: Page;
   colunas: string[];
+  ano: AnoWithEntidadeName;
 }) {
   await page.waitForLoadState("networkidle");
   const linhas = await page.$$eval(
@@ -129,7 +148,7 @@ async function getTransferencia({
       return linhas;
     }
   );
-  save({ receitas: linhas, colunas });
+  save({ receitas: linhas, colunas, ano });
   if (
     await page.evaluate(
       () => document.querySelectorAll("img.dxWeb_pNext").length
@@ -147,6 +166,7 @@ async function getTransferencia({
     await getTransferencia({
       page,
       colunas,
+      ano,
     });
   }
 }
@@ -154,9 +174,11 @@ async function getTransferencia({
 export async function save({
   receitas,
   colunas,
+  ano,
 }: {
   receitas: any[];
   colunas: string[];
+  ano: AnoWithEntidadeName;
 }) {
   const inserts = receitas.map(async (receita) => {
     const obj = {} as any;
@@ -165,5 +187,24 @@ export async function save({
     );
     return tratamento(obj);
   });
-  console.log(inserts);
+  for await (const transferencia of inserts) {
+    info(`${transferencia.Data} - ${transferencia.Concedida}`);
+    await prisma.transferencia.upsert({
+      where: {
+        CNPJEntPagadora_CNPJEntRecebedora_Data: {
+          CNPJEntPagadora: transferencia.CNPJEntPagadora,
+          CNPJEntRecebedora: transferencia.CNPJEntRecebedora,
+          Data: transferencia.Data,
+        },
+      },
+      update: {
+        ...transferencia,
+      },
+      create: {
+        anoId: ano.id,
+        Exercicio: ano.ano,
+        ...transferencia,
+      },
+    });
+  }
 }

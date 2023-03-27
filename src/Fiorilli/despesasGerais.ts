@@ -9,13 +9,26 @@ import {
   getTotal,
   tratamento,
 } from "./portal";
+import { PrismaClient, Prisma } from "@prisma/client";
+import { info } from "console";
+const prisma = new PrismaClient();
+
+type AnoWithEntidadeName = Prisma.AnoGetPayload<{
+  include: {
+    entidadeName: {
+      include: {
+        entidade: {
+          include: { portal: true };
+        };
+      };
+    };
+  };
+}>;
 
 interface getDespesasGeraisProps {
   initialDate?: string;
   finalDate?: string;
-  pageUrl: string;
-  entidade: string;
-  exercicio: string;
+  ano: AnoWithEntidadeName;
 }
 
 interface acessdespesasGeraisProps {
@@ -23,15 +36,17 @@ interface acessdespesasGeraisProps {
 }
 
 export async function getDespesasGerais({
+  ano: anoprop,
   initialDate,
   finalDate,
-  exercicio,
-  entidade,
-  pageUrl,
 }: getDespesasGeraisProps) {
+  const exercicio = `${anoprop.ano}`;
+  const entidade = `${anoprop.entidadeName.name}`;
+  const pageUrl = anoprop.entidadeName.entidade.portal.url;
+
   const inicio = moment.now();
   title(`Despesas Gerais`);
-  const browser = await chromium.launch({ headless: false, devtools: true });
+  const browser = await chromium.launch({ headless: true, devtools: true });
   const context = await browser.newContext();
   const page = await context.newPage();
   await blockRequests({ page });
@@ -49,6 +64,8 @@ export async function getDespesasGerais({
 
   // Disable dados consolidados
   await disableDadosConsolidados({ frameUrl: ".*/Home.aspx*", page });
+
+  await sleep({ time: 5000, page });
 
   await changeDateInterval({
     frameUrl: ".*/DespesasPorEntidade.aspx*",
@@ -68,6 +85,7 @@ export async function getDespesasGerais({
     context,
     page,
     total,
+    ano: anoprop,
   });
 
   await browser.close();
@@ -93,10 +111,12 @@ async function getAllDespesas({
   context,
   page,
   total,
+  ano,
 }: {
   context: BrowserContext;
   page: Page;
   total: number;
+  ano: AnoWithEntidadeName;
 }) {
   const empenhosNumber = Array(total).keys();
   await sleep({ time: 1000, page });
@@ -129,11 +149,14 @@ async function getAllDespesas({
           response.status(200)
         );
       },
-      { timeout: 70000 }
+      { timeout: 300000 }
     );
 
     if (response.url().endsWith("DadosEmpenho.aspx")) {
-      await save({ empenho: await getEmpenho({ page: pageDadosEmpenho }) });
+      await save({
+        empenho: await getEmpenho({ page: pageDadosEmpenho }),
+        ano,
+      });
     }
     if (response.url().includes("DespesasEmpenhosLista.aspx")) {
       await pageEmpenhoLista.bringToFront();
@@ -143,6 +166,7 @@ async function getAllDespesas({
         page: pageEmpenhoLista,
         pageDadosEmpenho,
         func: save,
+        ano,
       });
       await page.evaluate(() => eval(`VoltarDespesas()`));
     }
@@ -168,12 +192,14 @@ async function getEmpenho({ page }: { page: Page }) {
     const dados = {} as any;
     campos.map((campo) => {
       if (!campo.id.includes("ASPxPageControl") && campo.textContent != "")
-        dados[campo.id.replace("txt", "").toLowerCase()] = campo.textContent;
+        dados[
+          campo.id.replace("txt", "") //.toLowerCase()
+        ] = campo.textContent;
     });
     return dados;
   });
 
-  empenho["historico"] = await historicoEl.evaluate((el) => el.textContent);
+  empenho["Historico"] = await historicoEl.evaluate((el) => el.textContent);
 
   empenho["liquidacoes"] = await page.$$eval(
     `#gridParcelas_DXMainTable > tbody > tr.dxgvDataRow`,
@@ -184,7 +210,7 @@ async function getEmpenho({ page }: { page: Page }) {
           numero: itens[1].textContent,
           data: itens[2].textContent,
           valor: itens[3].textContent,
-          vencimento: itens[4].textContent,
+          Vencimento: itens[4].textContent,
         };
       })
   );
@@ -214,10 +240,18 @@ export async function getDadosEmpenhoFromList({
   page,
   pageDadosEmpenho,
   func,
+  ano,
 }: {
   page: Page;
   pageDadosEmpenho: Page;
-  func: ({ empenho }: { empenho: any }) => Promise<any>;
+  func: ({
+    empenho,
+    ano,
+  }: {
+    empenho: any;
+    ano: AnoWithEntidadeName;
+  }) => Promise<any>;
+  ano: AnoWithEntidadeName;
 }) {
   const empenhos = [] as any;
   const total = await getTotal({
@@ -243,17 +277,71 @@ export async function getDadosEmpenhoFromList({
         response.url().includes("DadosEmpenho.aspx") && response.status(200),
       { timeout: 50000 }
     );
-    await func({ empenho: await getEmpenho({ page: pageDadosEmpenho }) });
+    await func({ empenho: await getEmpenho({ page: pageDadosEmpenho }), ano });
   }
 
   return empenhos;
 }
 
-export async function save({ empenho }: { empenho: any }) {
-  empenho = tratamento(empenho);
-  console.log(empenho);
+export async function save({
+  empenho: emp,
+  ano,
+}: {
+  empenho: any;
+  ano: AnoWithEntidadeName;
+}) {
+  const { liquidacoes, pagamentos, ...empenho } = tratamento(emp);
+  info(
+    `${ano.ano} - ${empenho.Numero} - ${empenho.Tipo} - ${empenho.Favorecido}`
+  );
 
-  //const { numero, tipo, data, favorecido } = empenho;
-  //console.log({ numero, tipo, data, favorecido });
-  return empenho;
+  const dbempenho = await prisma.empenho.upsert({
+    where: {
+      anoId_Numero: {
+        anoId: ano?.id as number,
+        Numero: empenho.Numero,
+      },
+    },
+    update: {
+      ...empenho,
+    },
+    create: {
+      anoId: ano?.id as number,
+      ...empenho,
+    },
+  });
+  for await (const liquidacao of liquidacoes) {
+    await prisma.liquidacao.upsert({
+      where: {
+        numero_epenhoId: {
+          numero: liquidacao.numero,
+          epenhoId: dbempenho.id,
+        },
+      },
+      update: {
+        ...liquidacao,
+      },
+      create: {
+        epenhoId: dbempenho.id,
+        ...liquidacao,
+      },
+    });
+  }
+  for await (const pagamento of pagamentos) {
+    await prisma.pagamento.upsert({
+      where: {
+        numero_epenhoId: {
+          numero: pagamento.numero,
+          epenhoId: dbempenho.id,
+        },
+      },
+      update: {
+        ...pagamento,
+      },
+      create: {
+        epenhoId: dbempenho.id,
+        ...pagamento,
+      },
+    });
+  }
 }
