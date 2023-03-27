@@ -2,12 +2,23 @@ import { getDespesasExtras } from "./Fiorilli/despesasExtras";
 import { getDespesasGerais } from "./Fiorilli/despesasGerais";
 import { getReceitas } from "./Fiorilli/receitas";
 import { getTransferencias } from "./Fiorilli/transferencias";
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const cron = require("node-cron");
 
 import { PrismaClient } from "@prisma/client";
 import { title } from "./utils";
+import app from "./api";
 const prisma = new PrismaClient();
 
-(async () => {
+app.listen(process.env.PORT || 3000, () => {
+  console.log(
+    `⚡️[server]: Server is running at http://localhost:${
+      process.env.PORT || 3000
+    }`
+  );
+});
+
+async function update() {
   const anos = await prisma.ano.findMany({
     include: {
       entidadeName: {
@@ -46,4 +57,8 @@ const prisma = new PrismaClient();
       });
     }
   }
-})();
+}
+
+update();
+
+cron.schedule("*/20 * * * *", async () => await update());
