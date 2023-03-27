@@ -7,6 +7,7 @@ import {
   disableDadosConsolidados,
   changeDateInterval,
   getTotal,
+  tratamento,
 } from "./portal";
 
 interface getDespesasGeraisProps {
@@ -249,7 +250,10 @@ export async function getDadosEmpenhoFromList({
 }
 
 export async function save({ empenho }: { empenho: any }) {
-  const { numero, tipo, data, favorecido } = empenho;
-  console.log({ numero, tipo, data, favorecido });
+  empenho = tratamento(empenho);
+  console.log(empenho);
+
+  //const { numero, tipo, data, favorecido } = empenho;
+  //console.log({ numero, tipo, data, favorecido });
   return empenho;
 }

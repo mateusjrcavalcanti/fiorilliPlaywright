@@ -9,6 +9,7 @@ import {
   changeDateInterval,
   getTotal,
   getColuns,
+  tratamento,
 } from "./portal";
 
 interface getReceitasProps {
@@ -155,12 +156,12 @@ export async function save({
   receitas: any[];
   colunas: string[];
 }) {
-  const inserts = receitas.map((receita) => {
+  const inserts = receitas.map(async (receita) => {
     const obj = {} as any;
     colunas.forEach(
       (coluna) => (obj[coluna] = receita[colunas.indexOf(coluna)])
     );
-    return obj;
+    return tratamento(obj);
   });
   console.log(inserts);
 }

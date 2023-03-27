@@ -1,5 +1,7 @@
+import moment from "moment";
+
 import { error, info, ok, sleep } from "../utils";
-import { Frame, Page } from "playwright-core";
+import { Page } from "playwright-core";
 
 interface changeExercicioProps {
   page: Page;
@@ -198,4 +200,28 @@ export async function getColuns(page: Page, idGrid: string) {
   }, idGrid);
 
   return colunas;
+}
+
+export function tratamento(dados: any) {
+  Object.keys(dados).forEach((k) => {
+    if (k == "liquidacoes")
+      dados[k] = dados[k].map((data: any) => tratamento(data));
+    if (k == "pagamentos")
+      dados[k] = dados[k].map((data: any) => tratamento(data));
+
+    if (k == "data" || k == "vencimento")
+      dados[k] = new Date(moment(dados[k], "DD/MM/YYYY").format("YYYY-MM-DD"));
+    if (k == "exercicio" || k == "Extra") dados[k] = Number(dados[k]);
+    if (
+      k == "valorempenhado" ||
+      k == "valor" ||
+      k == "recebida" ||
+      k == "concedida" ||
+      k == "retencao" ||
+      k == "pago" ||
+      k == "arrectotal"
+    )
+      dados[k] = Number(dados[k].replace(".", "").replace(",", "."));
+  });
+  return dados;
 }
