@@ -62,13 +62,12 @@ export async function getDespesasGerais({
   // Acess page despesas gerais
   await acessPageDespesasGerais({ page });
 
-  // Disable dados consolidados
-  await disableDadosConsolidados({ frameUrl: ".*/Home.aspx*", page });
-
   await sleep({ time: 5000, page });
 
+  // Disable dados consolidados
+  await disableDadosConsolidados({ page });
+
   await changeDateInterval({
-    frameUrl: ".*/DespesasPorEntidade.aspx*",
     finalDate,
     initialDate,
     page,
@@ -76,12 +75,12 @@ export async function getDespesasGerais({
 
   const total = await getTotal({
     page,
-    frameUrl: ".*/DespesasPorEntidade.aspx*",
   });
 
-  if (!total) return;
+  if (!total || total > 1000) return;
 
   await getAllDespesas({
+    pageUrl,
     context,
     page,
     total,
@@ -104,15 +103,22 @@ async function acessPageDespesasGerais({ page }: acessdespesasGeraisProps) {
       response.status() == 200
   );
 
+  const url = page.url();
+  await page.goto(`${url}DespesasPorEntidade.aspx`, {
+    waitUntil: "networkidle",
+  });
+
   ok("Página de despesas gerais acessada");
 }
 
 async function getAllDespesas({
+  pageUrl,
   context,
   page,
   total,
   ano,
 }: {
+  pageUrl: string;
   context: BrowserContext;
   page: Page;
   total: number;
@@ -122,15 +128,10 @@ async function getAllDespesas({
   await sleep({ time: 1000, page });
   const pageDadosEmpenho = await context.newPage();
   const pageEmpenhoLista = await context.newPage();
-  const url = page.url();
-  await pageDadosEmpenho.goto(`${url}DadosEmpenho.aspx`);
-  await pageEmpenhoLista.goto(`${url}DespesasEmpenhosLista.aspx`);
-  await page.goto(
-    `${url}DespesasPorEntidade.aspx?bolMostraDadosConsolidados=N`,
-    {
-      waitUntil: "networkidle",
-    }
-  );
+
+  await pageDadosEmpenho.goto(`${pageUrl}DadosEmpenho.aspx`);
+  await pageEmpenhoLista.goto(`${pageUrl}DespesasEmpenhosLista.aspx`);
+
   for await (const empenhoNumber of empenhosNumber) {
     await page.waitForLoadState("domcontentloaded");
     await page.bringToFront();

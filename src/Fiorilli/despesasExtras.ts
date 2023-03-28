@@ -76,22 +76,22 @@ export async function getDespesasExtras({
   await acessPageDespesasExtras({ page });
 
   // Disable dados consolidados
-  await disableDadosConsolidados({ frameUrl: ".*/Home.aspx*", page });
+  await disableDadosConsolidados({ page });
+
+  await sleep({ time: 5000, page });
 
   await changeDateInterval({
-    frameUrl: ".*/DespesasPorEntidade.aspx*",
     finalDate,
     page,
   });
 
   const total = await getTotal({
     page,
-    frameUrl: ".*/DespesasPorEntidade.aspx*",
   });
 
-  if (!total) return;
+  if (!total || total > 1000) return;
 
-  await getAllDespesasExtras({ context, page, total, ano: anoprop });
+  await getAllDespesasExtras({ context, page, total, ano: anoprop, pageUrl });
 
   await browser.close();
   infoTitle(
@@ -109,6 +109,15 @@ async function acessPageDespesasExtras({ page }: acessdespesasGeraisProps) {
       response.status() == 200
   );
 
+  const url = page.url();
+  await page.goto(
+    `${url}DespesasPorEntidade.aspx?bolMostraDadosConsolidados=N`,
+    {
+      waitUntil: "networkidle",
+    }
+  );
+  await page.bringToFront();
+
   ok("Página de despesas extras acessada");
 }
 
@@ -117,22 +126,17 @@ async function getAllDespesasExtras({
   page,
   total,
   ano,
+  pageUrl,
 }: {
   context: BrowserContext;
   page: Page;
   total: number;
   ano: AnoWithEntidadeName;
+  pageUrl: string;
 }) {
   const pageDadosEmpenho = await context.newPage();
-  const url = page.url();
-  await pageDadosEmpenho.goto(`${url}DadosEmpenho.aspx`);
 
-  await page.goto(
-    `${url}DespesasPorEntidade.aspx?bolMostraDadosConsolidados=N`,
-    {
-      waitUntil: "networkidle",
-    }
-  );
+  await pageDadosEmpenho.goto(`${pageUrl}DadosEmpenho.aspx`);
   await page.bringToFront();
   const empenhosExtra = [];
 

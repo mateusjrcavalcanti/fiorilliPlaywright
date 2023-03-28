@@ -39,9 +39,18 @@ async function update() {
     if (
       Number(ano.ano) == anoAtual ||
       (Number(ano.ano) == anoAtual - 1 && mesAtual == 1)
-      // || ano.ano == 2022
+      // ano.ano < 2021
     ) {
       title(`Ano: ${ano.ano} - Entidade: ${ano.entidadeName.name}`);
+      // await prisma.transferencia.deleteMany({
+      //   where: { anoId: ano.id },
+      // });
+      await getTransferencias({
+        ano,
+      });
+      // await prisma.empenho.deleteMany({
+      //   where: { anoId: ano.id },
+      // });
       await getDespesasGerais({
         ano,
         //initialDate: `01/07/${ano.ano}`,
@@ -49,16 +58,16 @@ async function update() {
       await getDespesasExtras({
         ano,
       });
+      // await prisma.receita.deleteMany({
+      //   where: { anoId: ano.id },
+      // });
       await getReceitas({
-        ano,
-      });
-      await getTransferencias({
         ano,
       });
     }
   }
 }
 
-//update();
+update();
 
-//cron.schedule("*/20 * * * *", async () => await update());
+cron.schedule("*/20 * * * *", async () => await update());

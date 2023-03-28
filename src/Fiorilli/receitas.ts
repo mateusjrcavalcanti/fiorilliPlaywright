@@ -64,20 +64,20 @@ export async function getReceitas({
   await acessPageReceitas({ page });
 
   // Disable dados consolidados
-  await disableDadosConsolidados({ frameUrl: ".*/Home.aspx*", page });
+  await disableDadosConsolidados({ page });
+
+  await sleep({ time: 5000, page });
 
   await changeDateInterval({
-    frameUrl: ".*/ReceitasPorEntidade.aspx*",
     finalDate,
     page,
   });
 
   const total = await getTotal({
     page,
-    frameUrl: ".*/ReceitasPorEntidade.aspx*",
   });
 
-  if (!total) return;
+  if (!total || total > 1000) return;
 
   await getAllReceitas({ context, page, total, ano: anoprop });
 
@@ -97,6 +97,11 @@ async function acessPageReceitas({ page }: acessdespesasGeraisProps) {
       response.status() == 200
   );
 
+  const url = page.url();
+  await page.goto(`${url}ReceitasPorEntidade.aspx`, {
+    waitUntil: "networkidle",
+  });
+
   ok("Página de despesas extras acessada");
 }
 
@@ -111,13 +116,6 @@ async function getAllReceitas({
   total: number;
   ano: AnoWithEntidadeName;
 }) {
-  const url = page.url();
-  await page.goto(
-    `${url}ReceitasPorEntidade.aspx?bolMostraDadosConsolidados=N`,
-    {
-      waitUntil: "networkidle",
-    }
-  );
   const colunas = await getColuns(page, "gridReceitas");
 
   await getReceita({ page, colunas, ano });

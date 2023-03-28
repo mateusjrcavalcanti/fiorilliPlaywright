@@ -63,24 +63,27 @@ export async function getTransferencias({
   // Acess page despesas gerais
   await acessPageTransferencias({ page });
 
-  // Disable dados consolidados
-  await disableDadosConsolidados({ frameUrl: ".*/Home.aspx*", page });
+  const url = page.url();
+  await page.goto(
+    `${url}TransferenciasPorEntidade.aspx?bolMostraDadosConsolidados=N`,
+    {
+      waitUntil: "networkidle",
+    }
+  );
 
-  //await sleep({ time: 10000, page });
-  //await page.waitForLoadState("networkidle");
+  // Disable dados consolidados
+  await disableDadosConsolidados({ page });
 
   await changeDateInterval({
-    frameUrl: ".*/TransferenciasPorEntidade.aspx*",
     finalDate,
     page,
   });
 
   const total = await getTotal({
     page,
-    frameUrl: ".*/TransferenciasPorEntidade.aspx*",
   });
 
-  if (!total) return;
+  if (!total || total > 100) return;
 
   await getAllTransferencias({ context, page, total, ano: anoprop });
 
@@ -114,13 +117,6 @@ async function getAllTransferencias({
   total: number;
   ano: AnoWithEntidadeName;
 }) {
-  const url = page.url();
-  await page.goto(
-    `${url}TransferenciasPorEntidade.aspx?bolMostraDadosConsolidados=N`,
-    {
-      waitUntil: "networkidle",
-    }
-  );
   const colunas = await getColuns(page, "gridTransferencias");
 
   await getTransferencia({ page, colunas, ano });
@@ -148,7 +144,7 @@ async function getTransferencia({
       return linhas;
     }
   );
-  save({ receitas: linhas, colunas, ano });
+  await save({ receitas: linhas, colunas, ano });
   if (
     await page.evaluate(
       () => document.querySelectorAll("img.dxWeb_pNext").length

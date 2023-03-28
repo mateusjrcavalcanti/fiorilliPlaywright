@@ -14,7 +14,6 @@ interface changeEntidadeProps {
 }
 
 interface changeDateIntervalProps {
-  frameUrl: string;
   page: Page;
   initialDate?: string;
   finalDate?: string;
@@ -79,39 +78,24 @@ export async function changeEntidade({ page, entidade }: changeEntidadeProps) {
   ok("Entidade preenchida");
 }
 
-export async function disableDadosConsolidados({
-  frameUrl,
-  page,
-}: {
-  frameUrl: string;
-  page: Page;
-}) {
-  const frameHome = page.frame({ url: new RegExp(frameUrl, "i") });
-  if (!frameHome) {
-    error(
-      `Frame ${frameUrl} não encontrado em "disableDadosConsolidados" function`
-    );
-    return;
-  }
-  const dadosConsolidadosInput = await frameHome.waitForSelector(
+export async function disableDadosConsolidados({ page }: { page: Page }) {
+  const dadosConsolidadosInput = await page.waitForSelector(
     "input[id=chkMostrarDadosConsolidados]",
     { state: "attached" }
   );
   dadosConsolidadosInput?.uncheck();
+  await page.evaluate(() => eval(`AtualizarGrid()`));
+
+  await page.waitForLoadState("networkidle");
   ok("Dados consolidados desabilitados");
 }
 
 export async function changeDateInterval({
-  frameUrl,
   page,
   initialDate,
   finalDate,
 }: changeDateIntervalProps) {
-  const frameDespesasPorEntidade = page.frame({
-    url: new RegExp(frameUrl, "i"),
-  });
-
-  if (frameDespesasPorEntidade && (initialDate || finalDate)) {
+  if (page && (initialDate || finalDate)) {
     initialDate = !initialDate
       ? `01/01/${finalDate?.split("/")[2]}`
       : initialDate;
@@ -124,28 +108,22 @@ export async function changeDateInterval({
     info(`📅 ${finalDate} - data final`);
 
     // Data inicial
-    const dataInitialInput = await frameDespesasPorEntidade.waitForSelector(
-      dataInitialSelector,
-      {
-        state: "attached",
-      }
-    );
+    const dataInitialInput = await page.waitForSelector(dataInitialSelector, {
+      state: "attached",
+    });
     await dataInitialInput?.fill(initialDate);
     ok(`Data inicial preenchida: ${initialDate}`);
 
     // Data final
-    const dataFinalInput = await frameDespesasPorEntidade.waitForSelector(
-      datafinalSelector,
-      {
-        state: "visible",
-      }
-    );
+    const dataFinalInput = await page.waitForSelector(datafinalSelector, {
+      state: "visible",
+    });
     await dataFinalInput?.fill(finalDate);
 
     ok(`Data final preenchida: ${finalDate}`);
 
     await (
-      await frameDespesasPorEntidade.waitForSelector(elementClickSelector, {
+      await page.waitForSelector(elementClickSelector, {
         state: "attached",
       })
     ).click();
@@ -153,25 +131,12 @@ export async function changeDateInterval({
 
   await sleep({ time: 2000, page });
 
-  return frameDespesasPorEntidade;
+  return page;
 }
 
-export async function getTotal({
-  page,
-  frameUrl,
-  log,
-}: {
-  page: Page;
-  frameUrl?: string;
-  log?: boolean;
-}) {
-  const frameDespesasPorEntidade = page.frame({
-    url: new RegExp(`${frameUrl}`, "i"),
-  });
-
+export async function getTotal({ page, log }: { page: Page; log?: boolean }) {
   const selector =
-    (await frameDespesasPorEntidade?.$("td.dxpSummary")) ||
-    (await page?.$("td.dxpSummary"));
+    (await page?.$("td.dxpSummary")) || (await page?.$("td.dxpSummary"));
 
   if (!selector) {
     error("Não foi possível encontrar o total de linhas");
