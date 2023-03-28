@@ -59,6 +59,6 @@ async function update() {
   }
 }
 
-update();
+//update();
 
-cron.schedule("*/20 * * * *", async () => await update());
+//cron.schedule("*/20 * * * *", async () => await update());
