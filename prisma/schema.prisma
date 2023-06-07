@@ -116,6 +116,7 @@ model Empenho {
   Elemento            String?
   Desdobro            String?
   Natureza            String?
+  NumFicha            String?
 
   Ano         Ano          @relation(fields: [anoId], references: [id], onDelete: Cascade)
   anoId       Int

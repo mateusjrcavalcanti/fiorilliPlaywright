@@ -46,7 +46,7 @@ export async function getDespesasGerais({
 
   const inicio = moment.now();
   title(`Despesas Gerais`);
-  const browser = await chromium.launch({ headless: true, devtools: true });
+  const browser = await chromium.launch({headless: true, devtools: true });
   const context = await browser.newContext();
   const page = await context.newPage();
   await blockRequests({ page });
@@ -185,7 +185,7 @@ async function getEmpenho({ page }: { page: Page }) {
     Array.from(document.querySelectorAll("span.LabelDadosCampo"))
   );
 
-  const historicoEl = await page.waitForSelector("span.LabelDadosHistorico", {
+  const historicoEl = await page.waitForSelector("span#txtHistorico", {
     state: "visible",
   });
 

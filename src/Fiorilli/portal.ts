@@ -86,6 +86,8 @@ export async function disableDadosConsolidados({ page }: { page: Page }) {
   dadosConsolidadosInput?.uncheck();
   await page.evaluate(() => eval(`AtualizarGrid()`));
 
+  await sleep({ time: 10000, page });
+
   await page.waitForLoadState("networkidle");
   ok("Dados consolidados desabilitados");
 }

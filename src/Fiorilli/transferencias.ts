@@ -47,7 +47,7 @@ export async function getTransferencias({
   const pageUrl = anoprop.entidadeName.entidade.portal.url;
   const inicio = moment.now();
   title(`Transferências`);
-  const browser = await chromium.launch({ headless: true, devtools: true });
+  const browser = await chromium.launch({headless: true, devtools: true });
   const context = await browser.newContext();
   const page = await context.newPage();
   await blockRequests({ page });

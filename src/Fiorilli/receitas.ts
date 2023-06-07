@@ -47,7 +47,7 @@ export async function getReceitas({
   const pageUrl = anoprop.entidadeName.entidade.portal.url;
   const inicio = moment.now();
   title(`Receitas`);
-  const browser = await chromium.launch({ headless: true, devtools: true });
+  const browser = await chromium.launch({headless: true, devtools: true });
   const context = await browser.newContext();
   const page = await context.newPage();
   await blockRequests({ page });

@@ -18,7 +18,7 @@ app.listen(process.env.PORT || 3000, () => {
   );
 });
 
-async function update() {
+async function update(retroativo = false) {
   const anos = await prisma.ano.findMany({
     include: {
       entidadeName: {
@@ -37,9 +37,9 @@ async function update() {
 
   for await (const ano of anos) {
     if (
+      retroativo ||
       Number(ano.ano) == anoAtual ||
       (Number(ano.ano) == anoAtual - 1 && mesAtual == 1)
-      // ano.ano < 2021
     ) {
       title(`Ano: ${ano.ano} - Entidade: ${ano.entidadeName.name}`);
       // await prisma.transferencia.deleteMany({
@@ -70,4 +70,8 @@ async function update() {
 
 update();
 
-cron.schedule("*/20 * * * *", async () => await update());
+cron.schedule(
+  "*/30 * * * *",
+  async () =>
+    new Date().getHours() > 7 && new Date().getHours() < 18 && (await update())
+);
