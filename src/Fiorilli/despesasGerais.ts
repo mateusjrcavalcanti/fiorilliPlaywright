@@ -150,7 +150,7 @@ async function getAllDespesas({
           response.status(200)
         );
       },
-      { timeout: 300000 }
+      { timeout: 600000 }
     );
 
     if (response.url().endsWith("DadosEmpenho.aspx")) {
