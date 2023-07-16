@@ -80,7 +80,7 @@ app.get(
     }
 
     console.log(
-      `/${req.params.url}/${req.params.entidade}/despesas/${req.params.inicio}/${req.params.fim}/`
+      `/transparencia/${req.params.entidade}/despesas/${req.params.inicio}/${req.params.fim}/`
     );
     res.json(data);
   }
@@ -151,7 +151,7 @@ app.get(
     });
 
     console.log(
-      `/${req.params.url}/${req.params.entidade}/empenho/${req.params.numero}/${req.params.ano}/`
+      `/transparencia/${req.params.entidade}/empenho/${req.params.numero}/${req.params.ano}/`
     );
     res.json(data[0]);
   }
@@ -189,7 +189,7 @@ app.get(
     }
 
     console.log(
-      `/${req.params.url}/${req.params.entidade}/receitas/${req.params.inicio}/${req.params.fim}/`
+      `/transparencia/${req.params.entidade}/receitas/${req.params.inicio}/${req.params.fim}/`
     );
     res.json(data);
   }
@@ -227,7 +227,7 @@ app.get(
     }
 
     console.log(
-      `/${req.params.url}/${req.params.entidade}/transferencias/${req.params.inicio}/${req.params.fim}/`
+      `/transparencia/${req.params.entidade}/transferencias/${req.params.inicio}/${req.params.fim}/`
     );
     res.json(data);
   }

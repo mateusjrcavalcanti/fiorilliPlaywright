@@ -20,6 +20,7 @@ app.listen(process.env.PORT || 3000, () => {
 });
 
 async function update(retroativo = false) {
+  console.log("\n\nIniciando atualização");
   const anos = await prisma.ano.findMany({
     include: {
       entidadeName: {
