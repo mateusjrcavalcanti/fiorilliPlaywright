@@ -1,14 +1,15 @@
-import { getDespesasExtras } from "./Fiorilli/despesasExtras";
-import { getDespesasGerais } from "./Fiorilli/despesasGerais";
-import { getReceitas } from "./Fiorilli/receitas";
-import { getTransferencias } from "./Fiorilli/transferencias";
+import { PrismaClient } from "@prisma/client";
+const prisma = new PrismaClient();
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const cron = require("node-cron");
-
-import { PrismaClient } from "@prisma/client";
-import { title } from "./utils";
 import app from "./api";
-const prisma = new PrismaClient();
+
+import {
+  despesasGerais,
+  despesasExtras,
+  getReceitas,
+  getTransferencias,
+} from "./Fiorilli/data";
 
 app.listen(process.env.PORT || 3000, () => {
   console.log(
@@ -41,28 +42,15 @@ async function update(retroativo = false) {
       Number(ano.ano) == anoAtual ||
       (Number(ano.ano) == anoAtual - 1 && mesAtual == 1)
     ) {
-      title(`Ano: ${ano.ano} - Entidade: ${ano.entidadeName.name}`);
-      // await prisma.transferencia.deleteMany({
-      //   where: { anoId: ano.id },
-      // });
-      await getTransferencias({
+      console.log(`Ano: ${ano.ano} - Entidade: ${ano.entidadeName.name}`);
+      await getTransferencias({ ano });
+      await getReceitas({ ano });
+      await despesasExtras({
         ano,
       });
-      // await prisma.empenho.deleteMany({
-      //   where: { anoId: ano.id },
-      // });
-      await getDespesasGerais({
+      await despesasGerais({
         ano,
-        //initialDate: `01/07/${ano.ano}`,
-      });
-      await getDespesasExtras({
-        ano,
-      });
-      // await prisma.receita.deleteMany({
-      //   where: { anoId: ano.id },
-      // });
-      await getReceitas({
-        ano,
+        //initialDate: `20/03/${ano.ano}`,
       });
     }
   }
