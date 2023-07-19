@@ -59,7 +59,7 @@ async function getAllTransferencias({
   ano: AnoWithEntidadeName;
 }) {
   const frame = await getFrameByName({ page, name: "frmPaginaAspx" });
-  const colunas = await getColuns(frame, "gridTransferencias");
+  const colunas = await getColuns(frame, "ASPxPageControl1_gridTransferencias");
 
   await getTransferencia({ frame, colunas, ano });
 

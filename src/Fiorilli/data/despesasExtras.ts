@@ -1,18 +1,16 @@
-import { Page, Frame } from "playwright-core";
+import { Page } from "playwright-core";
 import {
   defineExercice,
   openPage,
   acessPage,
   disableDadosConsolidados,
-  changeDateInterval,
   getTotal,
 } from "../actions";
 
-import { PrismaClient, Prisma } from "@prisma/client";
-import { getFrameByName, tratamento } from "../utils";
+import { Prisma } from "@prisma/client";
+import { getFrameByName } from "../utils";
 import moment from "moment";
-import { getEmpenho, getPageData, save } from "./despesasGerais";
-const prisma = new PrismaClient();
+import { getPageData } from "./despesasGerais";
 
 type Props = {
   ano: AnoWithEntidadeName;
@@ -59,7 +57,7 @@ export async function despesasExtras({ ano }: Props) {
     return;
   }
 
-  await getPageDataExtra({ page, ano, total });
+  await getPageDataExtra({ page, ano });
 
   await page.context().browser()?.close();
 }
@@ -67,10 +65,8 @@ export async function despesasExtras({ ano }: Props) {
 async function getPageDataExtra({
   page,
   ano,
-  total,
 }: {
   page: Page;
-  total: number;
   ano: AnoWithEntidadeName;
 }) {
   const onclicks = filterDespesasExtra([...(await getOnClicks())]);
@@ -81,14 +77,6 @@ async function getPageDataExtra({
     await btn.click();
 
     await frame.waitForNavigation();
-
-    // await frame
-    //   .page()
-    //   .waitForRequest(
-    //     (request) =>
-    //       request.resourceType() === "document" &&
-    //       request.url().includes("DespesasEmpenhosLista")
-    //   );
 
     const totalEmpenhos = (await getTotal({
       frame,
@@ -102,7 +90,6 @@ async function getPageDataExtra({
     });
 
     await frame.locator("input[id=btnVoltarDespesas]").click();
-    //await frame.waitForNavigation();
   }
 
   async function getOnClicks() {
@@ -127,40 +114,6 @@ async function getPageDataExtra({
       onclicks.push(...(await getOnClicks()));
     }
     return onclicks;
-  }
-
-  async function verifyDadosEmpenho({ routeType }: { routeType: string }) {
-    if (routeType == "DadosEmpenho") {
-      const frame = await getFrameByName({ page, name: "_ifrLoaderWindow" });
-      await frame.waitForNavigation();
-      const empenho = await getEmpenho({ frame });
-      await save({
-        empenho,
-        ano,
-      });
-      await frame.locator("#btnFecharDetalhe").click();
-    }
-  }
-
-  async function verifyDespesasEmpenhosLista({
-    routeType,
-  }: {
-    routeType: string;
-  }) {
-    if (routeType == "DespesasEmpenhosLista") {
-      const frame = await getFrameByName({ page, name: "frmPaginaAspx" });
-      await frame.waitForNavigation();
-      const totalEmpenhos = (await getTotal({
-        frame,
-      })) as number;
-      await getPageDataExtra({
-        page,
-        ano,
-        total: totalEmpenhos,
-      });
-      await frame.locator("input[id=btnVoltarDespesas]").click();
-      await frame.waitForNavigation();
-    }
   }
 }
 

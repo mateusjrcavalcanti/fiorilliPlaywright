@@ -1,5 +1,4 @@
 import { Page } from "playwright-core";
-import { getFrameByName } from "../utils";
 
 type Props = {
   page: Page;
@@ -7,35 +6,6 @@ type Props = {
 };
 
 export async function acessPage({ page, pagina }: Props) {
-  const paginas = {
-    "Despesas Gerais": {
-      ProcessaDados: "lnkDespesasPor_NotaEmpenho",
-      response: "DespesasPorEntidade.aspx",
-    },
-    "Despesas Extras": {
-      ProcessaDados: "lnkDespesasPor_ExtraOrcamentaria",
-      response: "DespesasPorEntidade.aspx",
-    },
-    Receitas: {
-      ProcessaDados: "lnkReceitaExtraOrcamentaria",
-      response: "ReceitasPorEntidade.aspx",
-    },
-    Transferencias: {
-      ProcessaDados: "LnkTransf",
-      response: "TransferenciasPorEntidade.aspx",
-    },
-  };
-  // await page.evaluate((data) => {
-  //   eval(`ProcessaDados('${data}')`);
-  // }, paginas[pagina].ProcessaDados);
-  // await page.waitForResponse((response) =>
-  //   response.url().includes(paginas[pagina].response)
-  // );
-
-  // await page.waitForLoadState("domcontentloaded");
-
-  //const frame = await getFrameByName({ page, name: "frmPaginaAspx" });
-
   if (pagina === "Receitas") {
     await page.locator("#LnkMenuReceitas").hover();
     await page.getByText("Arrecadação Extra-Orçamentária").click();
