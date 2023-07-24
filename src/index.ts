@@ -44,8 +44,6 @@ async function update(retroativo = false) {
       (Number(ano.ano) == anoAtual - 1 && mesAtual == 1)
     ) {
       console.log(`Ano: ${ano.ano} - Entidade: ${ano.entidadeName.name}`);
-      await getTransferencias({ ano });
-      await getReceitas({ ano });
       await despesasExtras({
         ano,
       });
@@ -53,6 +51,8 @@ async function update(retroativo = false) {
         ano,
         //initialDate: `20/03/${ano.ano}`,
       });
+      await getTransferencias({ ano });
+      await getReceitas({ ano });
     }
   }
 }

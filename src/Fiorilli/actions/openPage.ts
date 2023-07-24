@@ -5,7 +5,7 @@ type Props = {
 };
 
 export async function openPage({ url }: Props) {
-  const browser = await chromium.launch({ headless: true, devtools: true });
+  const browser = await chromium.launch({ headless: false, devtools: true });
   const context = await browser.newContext();
   const page = await context.newPage();
   await page.goto(url);

@@ -69,19 +69,7 @@ async function getPageDataExtra({
   page: Page;
   ano: AnoWithEntidadeName;
 }) {
-  const onclicks = [] as string[];
-
-  const frame = await getFrameByName({ page, name: "frmPaginaAspx" });
-  const rows = await frame
-    .locator(
-      "#gridDespesas_DXMainTable > tbody > tr.dxgvDataRow > td.CSS_lnkValor_ASPx"
-    )
-    .all();
-
-  for await (const row of rows) {
-    const attibute = await row.getAttribute("onclick");
-    if (attibute) onclicks.push(attibute);
-  }
+  const onclicks = filterDespesasExtra([...(await getOnClicks())]);
 
   for await (const onclick of onclicks) {
     const frame = await getFrameByName({ page, name: "frmPaginaAspx" });
@@ -104,13 +92,63 @@ async function getPageDataExtra({
     await frame.locator("input[id=btnVoltarDespesas]").click();
   }
 
-  const nextButtons = await frame.locator("img.dxWeb_pNext").all();
-  if (nextButtons.length) {
-    await nextButtons[0].click();
-    await frame.waitForTimeout(3000); //TODO: wait for navigation
-    await getPageDataExtra({
-      page,
-      ano,
-    });
+  async function getOnClicks() {
+    const onclicks = [] as string[];
+
+    const frame = await getFrameByName({ page, name: "frmPaginaAspx" });
+    const rows = await frame
+      .locator(
+        "#gridDespesas_DXMainTable > tbody > tr.dxgvDataRow > td.CSS_lnkValor_ASPx"
+      )
+      .all();
+
+    for await (const row of rows) {
+      const attibute = await row.getAttribute("onclick");
+      if (attibute) onclicks.push(attibute);
+    }
+
+    const nextButtons = await frame.locator("img.dxWeb_pNext").all();
+    if (nextButtons.length) {
+      await nextButtons[0].click();
+      //await frame.waitForNavigation();
+      await frame.waitForTimeout(3000); //TODO: wait for navigation
+      onclicks.push(...(await getOnClicks()));
+    }
+    return onclicks;
   }
+}
+
+function filterDespesasExtra(onCellClick: string[]) {
+  let clicks = [] as {
+    in: string;
+    out: string[];
+  }[];
+  onCellClick.forEach((e) => {
+    clicks.push({
+      in: e,
+      out: e
+        .replace(`onCellClick( `, ``)
+        .replace(`)`, ``)
+        .replace(`', '`, `,`)
+        .replace(`', '`, `,`)
+        .replace(`', '`, `,`)
+        .replace(/'/g, "")
+        .replace(/"/g, "")
+        .split(`,`),
+    });
+  });
+
+  clicks.forEach((op) => {
+    clicks = clicks.filter(
+      (e) =>
+        !(
+          e.out[0] === op.out[0] &&
+          moment(moment(e.out[3], "DD/MM/YYYY")).isBefore(
+            moment(op.out[3], "DD/MM/YYYY")
+          )
+        )
+    );
+  });
+
+  return clicks.map((e) => e.in);
 }
