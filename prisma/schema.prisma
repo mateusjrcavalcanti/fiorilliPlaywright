@@ -82,7 +82,7 @@ model Empenho {
   id                  Int       @id @default(autoincrement())
   Exercicio           Int
   Numero              String?
-  Tipo                String?
+  Tipo                String
   CPFCNPJ             String?
   Favorecido          String?
   Historico           String?
@@ -123,7 +123,7 @@ model Empenho {
   liquidacoes Liquidacao[]
   pagamentos  Pagamento[]
 
-  @@unique([anoId, Numero])
+  @@unique([anoId, Numero, Tipo])
 }
 
 model Liquidacao {

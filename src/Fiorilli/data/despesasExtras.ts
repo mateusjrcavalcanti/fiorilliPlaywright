@@ -107,7 +107,7 @@ async function getPageDataExtra({
   const nextButtons = await frame.locator("img.dxWeb_pNext").all();
   if (nextButtons.length) {
     await nextButtons[0].click();
-    await frame.waitForTimeout(3000); //TODO: wait for navigation
+    await frame.waitForTimeout(4000); //TODO: wait for navigation
     await getPageDataExtra({
       page,
       ano,

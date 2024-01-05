@@ -31,7 +31,7 @@ async function update(retroativo = false) {
         },
       },
     },
-    orderBy: { ano: "desc" },
+    orderBy: { ano: "asc" },
   });
 
   const anoAtual = new Date().getFullYear();
@@ -49,7 +49,6 @@ async function update(retroativo = false) {
       });
       await despesasGerais({
         ano,
-        //initialDate: `20/03/${ano.ano}`,
       });
       await getTransferencias({ ano });
       await getReceitas({ ano });

@@ -22,12 +22,19 @@ export function tratamento(dados: any) {
       k == "valor" ||
       k == "Recebida" ||
       k == "Concedida" ||
+      k == "Previsto" ||
       k == "retencao" ||
       k == "pago" ||
       k == "ArrecTotal"
     )
       dados[k] = Number(dados[k].replace(".", "").replace(",", "."));
 
+    if (k == "Mes") dados[k] = Number(dados[k]);
+    if (k === "") delete dados[k];
+    if (k == "CNPJEntpagadora") {
+      dados["CNPJEntPagadora"] = dados[k];
+      delete dados[k];
+    }
     //console.log(log);
   });
   return dados;

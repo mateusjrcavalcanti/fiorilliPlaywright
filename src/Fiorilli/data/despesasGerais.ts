@@ -101,26 +101,31 @@ export async function getPageData({
       props
     );
 
-    await frame.page().waitForRequest(async (request) => {
-      if (
-        request.resourceType() === "document" &&
-        request.url().includes("DespesasEmpenhosLista")
-        // && (await request.response())?.status() === 200
-      ) {
-        routeType = "DespesasEmpenhosLista";
-        return true;
-      } else if (
-        request.resourceType() === "document" &&
-        request.url().includes("DadosEmpenho") &&
-        (await request.response())?.status() === 200
-      ) {
-        routeType = "DadosEmpenho";
-        return true;
-      } else {
-        //console.log({ url: request.url(), type: request.resourceType() });
-        return false;
+    await frame.page().waitForRequest(
+      async (request) => {
+        if (
+          request.resourceType() === "document" &&
+          request.url().includes("DespesasEmpenhosLista")
+          // && (await request.response())?.status() === 200
+        ) {
+          routeType = "DespesasEmpenhosLista";
+          return true;
+        } else if (
+          request.resourceType() === "document" &&
+          request.url().includes("DadosEmpenho") &&
+          (await request.response())?.status() === 200
+        ) {
+          routeType = "DadosEmpenho";
+          return true;
+        } else {
+          //console.log({ url: request.url(), type: request.resourceType() });
+          return false;
+        }
+      },
+      {
+        timeout: 66000,
       }
-    });
+    );
 
     await verifyDadosEmpenho({
       routeType,
@@ -232,9 +237,10 @@ export async function save({
 
   const dbempenho = await prisma.empenho.upsert({
     where: {
-      anoId_Numero: {
+      anoId_Numero_Tipo: {
         anoId: ano?.id as number,
         Numero: empenho.Numero,
+        Tipo: empenho.Tipo,
       },
     },
     update: {

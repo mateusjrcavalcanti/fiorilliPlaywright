@@ -4,6 +4,7 @@ import {
   openPage,
   acessPage,
   disableDadosConsolidados,
+  getTotal,
 } from "../actions";
 
 import { PrismaClient, Prisma } from "@prisma/client";
@@ -58,59 +59,62 @@ async function getAllTransferencias({
   page: Page;
   ano: AnoWithEntidadeName;
 }) {
-  const frame = await getFrameByName({ page, name: "frmPaginaAspx" });
-  const colunas = await getColuns(frame, "ASPxPageControl1_gridTransferencias");
+  const mainFrame = await getFrameByName({ page, name: "frmPaginaAspx" });
 
-  await getTransferencia({ frame, colunas, ano });
+  const total = await getTotal({
+    frame: mainFrame,
+    log: true,
+  });
+
+  if (!total || total > 1000) {
+    console.log(`Total de despesas: ${total}`);
+    return;
+  }
+
+  const transferenciasNumber = Array(total).keys();
+  for await (const transferenciaNumber of transferenciasNumber) {
+    const paginatedFrame = await getFrameByName({
+      page,
+      name: "frmPaginaAspx",
+    });
+    await paginatedFrame.waitForFunction(
+      (value) =>
+        eval(
+          `window.setTimeout(function(){aspxGVCommandCustomButton('${value.grid}','btnDetalhes',${value.number});},0)`
+        ),
+      {
+        number: transferenciaNumber,
+        grid: "ASPxPageControl1_gridTransferencias",
+      }
+    );
+    await paginatedFrame.waitForNavigation();
+    const colunas = await getColuns(
+      paginatedFrame,
+      "ASPxPageControl1_gridTransferenciasDetalhes"
+    );
+    const linhas = await paginatedFrame.$$eval(
+      `#ASPxPageControl1_gridTransferenciasDetalhes_DXMainTable > tbody > tr.dxgvDataRow`,
+      (elements: any) => {
+        const linhas: any[] = [];
+        elements.map((el: any) => {
+          const linha: any[] = [];
+          Array.from(el.children).map((col: any) => linha.push(col.innerText));
+          linhas.push(linha);
+        });
+        return linhas;
+      }
+    );
+
+    await save({ receitas: linhas, colunas, ano });
+    await paginatedFrame
+      .locator("input[id=ASPxPageControl1_btnVoltar]")
+      .click();
+    await paginatedFrame.waitForNavigation();
+    // console.log({ colunas, linhas });
+    // await page.waitForTimeout(100000);
+  }
 
   await page.context().browser()?.close();
-}
-
-async function getTransferencia({
-  frame,
-  colunas,
-  ano,
-}: {
-  frame: Frame;
-  colunas: string[];
-  ano: AnoWithEntidadeName;
-}) {
-  await frame.waitForLoadState("networkidle");
-  const linhas = await frame.$$eval(
-    `#gridTransferencias_DXMainTable > tbody > tr.dxgvDataRow`,
-    (elements: any) => {
-      const linhas: any[] = [];
-      elements.map((el: any) => {
-        const linha: any[] = [];
-        Array.from(el.children).map((col: any) => linha.push(col.innerText));
-        linhas.push(linha);
-      });
-      return linhas;
-    }
-  );
-  await save({ receitas: linhas, colunas, ano });
-  if (
-    await frame.evaluate(
-      () => document.querySelectorAll("img.dxWeb_pNext").length
-    )
-  ) {
-    await frame.evaluate(() =>
-      eval(`aspxGVPagerOnClick('gridTransferencias','PBN');`)
-    );
-    await frame
-      .page()
-      .waitForResponse(
-        (response) =>
-          response.url().includes("TransferenciasPorEntidade.aspx") &&
-          response.status() == 200
-      );
-    await frame.evaluate(() => eval("AtualizarGrid()"));
-    await getTransferencia({
-      frame,
-      colunas,
-      ano,
-    });
-  }
 }
 
 async function save({
@@ -129,8 +133,9 @@ async function save({
     );
     return tratamento(obj);
   });
+
   for await (const transferencia of inserts) {
-    //console.log(`${transferencia.Data} - ${transferencia.Concedida}`);
+    // console.log(`${transferencia.Data} - ${transferencia.Concedida}`);
     await prisma.transferencia.upsert({
       where: {
         CNPJEntPagadora_CNPJEntRecebedora_Data: {

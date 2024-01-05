@@ -111,7 +111,7 @@ async function getPageDataExtra({
     if (nextButtons.length) {
       await nextButtons[0].click();
       //await frame.waitForNavigation();
-      await frame.waitForTimeout(3000); //TODO: wait for navigation
+      await frame.waitForTimeout(3500); //TODO: wait for navigation
       onclicks.push(...(await getOnClicks()));
     }
     return onclicks;
