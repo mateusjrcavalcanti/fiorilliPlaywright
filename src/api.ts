@@ -87,7 +87,7 @@ app.get(
 );
 
 app.get(
-  "/:url/:entidade/empenho/:numero/:ano/",
+  "/:url/:entidade/empenho/:numero/:tipo/:ano/",
   async (req: Request, res: Response) => {
     const data = await prisma.empenho.findMany({
       orderBy: {
@@ -95,6 +95,7 @@ app.get(
       },
       where: {
         Numero: { equals: req.params.numero },
+        Tipo: { equals: req.params.tipo },
         Ano: {
           entidadeName: {
             entidade: {
